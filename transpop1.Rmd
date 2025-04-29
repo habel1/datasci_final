@@ -1,0 +1,265 @@
+---
+title: "Transpop"
+output: html_notebook
+---
+
+
+# Fenway Variables
+
+- Data: TGNB only
+- Predictors: 
+    + age: continuous
+    + gender identity: 3: FTM/4: MTF/5: NB
+    + sexual minority identity: 1 or 0
+    + public assistance: 1 or 0
+- Outcomes:
+    + suicidal ideation (1=none, 2=once, 3=>1 times) and age of first onset
+    + suicidal intent (1=none, 2=once, 3=>1 times) and age of first onset
+    + suicide plan (1=none, 2=once, 3=>1 times) and age of first onset
+    + suicide attempt (1=none, 2=once, 3=>1 times) and age of first onset
+  
+```{r}
+library(partykit)
+library(tidyverse)
+```
+
+```{r}
+transpop <- read.delim("37938-0005-Data.tsv")
+
+transpopc1$pub_assist = as.factor((!is.na(transpopc1$Q203_2)) |
+                                    (!is.na(transpopc1$Q203_3)))
+transonly = transpopc1[transpopc1$GENDER_IDENTITY > 2, ]
+transpopc1$GENDER_IDENTITY = as.factor(transpopc1$GENDER_IDENTITY)
+transonly$GENDER_IDENTITY = as.factor(transonly$GENDER_IDENTITY)
+```
+
+```{r echo=F,message=F,output=F}
+# SI: Q128
+fenway_SI = ctree(
+  formula = as.ordered(Q128) ~ AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 +
+    SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+
+# Suicide Intent: Q132
+fenway_SInt = ctree(
+  formula = as.ordered(Q132) ~ AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 +
+    SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+
+# Suicide Plan: Q136
+fenway_SP = ctree(
+  formula = as.ordered(Q136) ~ AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 +
+    SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+
+# Suicide Attempt: Q140
+fenway_SA = ctree(
+  formula = as.ordered(Q140) ~ AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 +
+    SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+
+
+# Mutivariate
+fenway_mt_surv = ctree(
+  formula = Surv(Q130, !is.na(Q130)) + Surv(Q134, !is.na(Q134)) +
+    Surv(Q138, !is.na(Q138)) + Surv(Q143, !is.na(Q143)) ~
+    AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 + SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+fenway_mt = ctree(
+  formula = as.ordered(Q128) + as.ordered(Q132) + as.ordered(Q136) + as.ordered(Q140) ~
+    AGE + GENDER_IDENTITY + RACE_RECODE_CAT5 + SEXMINID + pub_assist,
+  data = transonly,
+  minbucket = 26,
+  multiway = T,
+  na.action = na.omit,
+  weights = WEIGHT_TRANSPOP
+)
+```
+
+### Suicidal ideation
+
+```{r echo=F}
+fenway_SI
+plot(fenway_SI)
+fenway_SI_surv
+plot(
+  sf2_fenway_SI_surv,
+  lty = c(1, 2, 3, 4, 5),
+  col = c("green", "blue", "purple", "red", "orange")
+)
+?plot.survfit
+```
+### Suicidal intent
+
+```{r echo=F}
+fenway_SInt
+plot(fenway_SInt)
+fenway_SInt_surv
+plot(fenway_SInt_surv)
+```
+
+### Suicide plan
+
+```{r echo=F}
+fenway_SP
+plot(fenway_SP)
+fenway_SP_surv
+plot(fenway_SP_surv)
+```
+
+### Suicide attempt
+
+```{r echo=F}
+fenway_SA
+plot(fenway_SA)
+fenway_SA_surv
+plot(fenway_SA_surv)
+```
+
+#Adjusted Fenway variables
+
+```{r}
+# SI: Q128
+fenway_SI_adj=ctree(formula=as.ordered(Q128)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4 )
+# SI (first time): Q130
+fenway_SI_surv_adj=ctree(formula=Surv(Q130,!is.na(Q130))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Intent: Q132
+fenway_SInt_adj=ctree(formula=as.ordered(Q132)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Intent (frist time): Q134
+fenway_SInt_surv_adj=ctree(formula=Surv(Q134,!is.na(Q134))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Plan: Q136
+fenway_SP_adj=ctree(formula=as.ordered(Q136)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Plan (first time): Q138
+fenway_SP_surv_adj=ctree(formula=Surv(Q138,!is.na(Q138))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Attempt: Q140
+fenway_SA_adj=ctree(formula=as.ordered(Q140)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Attempt (first time): Q143
+fenway_SA_surv_adj=ctree(formula=Surv(Q143,!is.na(Q143))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+
+```
+
+### Adjusted Suicidal ideation
+
+```{r echo=F}
+fenway_SI_adj
+plot(fenway_SI_adj)
+fenway_SI_surv_adj
+plot(fenway_SI_surv_adj)
+```
+
+### Suicidal intent
+
+```{r echo=F}
+fenway_SInt_adj
+plot(fenway_SInt_adj)
+fenway_SInt_surv_adj
+plot(fenway_SInt_surv_adj)
+```
+
+### Suicide plan
+
+```{r echo=F}
+fenway_SP_adj
+plot(fenway_SP_adj)
+fenway_SP_surv_adj
+plot(fenway_SP_surv_adj)
+```
+
+### Suicide attempt
+
+```{r echo=F}
+fenway_SA_adj
+plot(fenway_SA_adj)
+fenway_SA_surv_adj
+plot(fenway_SA_surv_adj)
+```
+
+
+# More Variables with Gender diverse data
+```{r echo=F,message=F,output=F}
+
+# SI: Q128
+gd_SI=ctree(formula=as.ordered(Q128)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# SI (first time): Q130
+gd_SI_surv=ctree(formula=Surv(Q130,!is.na(Q130))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Intent: Q132
+gd_SInt=ctree(formula=as.ordered(Q132)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Intent (frist time): Q134
+gd_SInt_surv=ctree(formula=Surv(Q134,!is.na(Q134))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/2)
+# Suicide Plan: Q136
+gd_SP=ctree(formula=as.ordered(Q136)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Plan (first time): Q138
+gd_SP_surv=ctree(formula=Surv(Q138,!is.na(Q138))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Attempt: Q140
+gd_SA=ctree(formula=as.ordered(Q140)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+# Suicide Attempt (first time): Q143
+gd_SA_surv=ctree(formula=Surv(Q143,!is.na(Q143))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+
+# Mutivariate
+gd_mt_surv=ctree(formula=Surv(Q130,!is.na(Q130))+Surv(Q134,!is.na(Q134))+
+                  Surv(Q138,!is.na(Q138))+Surv(Q143,!is.na(Q143))~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,
+                data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+gd_mt=ctree(formula=as.ordered(Q128)+as.ordered(Q132)+as.ordered(Q136)+as.ordered(Q140)~AGE+GENDER_IDENTITY+RACE_RECODE_CAT5+SEXMINID+pub_assist+PINC_I+GURBAN_I+AUDITC_I+DUDIT_I+KESSLER6_I+EVERYDAY_I+SOCIALWB_I+HCTHREAT_I+NONAFFIRM_I+NONDISCLOSURE_I+INTERNALIZED_I+NEGEXPFUTURE_I,
+                data=transonly,minbucket=26,multiway=T,na.action=na.omit,weights = WEIGHT_TRANSPOP,testtype="Bonferroni",mincriterion=1-.05/4)
+```
+### Suicidal ideation
+
+```{r echo=F}
+gd_SI
+plot(gd_SI)
+gd_SI_surv
+plot(gd_SI_surv)
+```
+
+### Suicidal intent
+
+```{r echo=F}
+gd_SInt
+plot(gd_SInt)
+gd_SInt_surv
+plot(gd_SInt_surv)
+```
+
+### Suicide plan
+
+```{r echo=F}
+gd_SP
+plot(gd_SP)
+gd_SP_surv
+plot(gd_SP_surv)
+```
+
+### Suicide attempt
+
+```{r echo=F}
+gd_SA
+plot(gd_SA)
+gd_SA_surv
+plot(gd_SA_surv)
+```
+
